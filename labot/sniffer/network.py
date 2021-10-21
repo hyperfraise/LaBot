@@ -18,7 +18,8 @@ import threading
 from select import select
 import errno
 
-from scapy.all import plist, conf
+from scapy.all import conf
+from scapy import plist
 from scapy.all import Raw, IP, PcapReader
 from scapy.data import ETH_P_ALL, MTU
 from scapy.consts import WINDOWS
