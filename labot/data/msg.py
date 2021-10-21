@@ -64,7 +64,11 @@ class Msg:
                 msg = Msg.fromRaw(newbuffer, from_client)
                 assert msg is not None and not newbuffer.remaining()
                 return msg
-            logger.debug("Parsed %s", protocol.msg_from_id[id]["name"])
+            try:
+                logger.debug("Parsed %s", protocol.msg_from_id[id]["name"])
+            except:
+                print("error with msg id", id)
+                pass
             buf.end()
 
             return Msg(id, data, count)
@@ -90,7 +94,7 @@ class Msg:
 
     @property
     def msgType(self):
-        return protocol.msg_from_id[self.id]
+        return protocol.msg_from_id.get(self.id, {})
 
     def json(self):
         logger.debug("Getting json representation of message %s", self)
