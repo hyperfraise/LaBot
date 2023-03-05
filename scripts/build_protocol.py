@@ -13,7 +13,9 @@ id_pattern = r"\s*public static const protocolId:uint = (?P<id>\d+);\n"
 public_var_pattern = r"\s*public var (?P<name>\w+):(?P<type>\S*)( = (?P<init>.*))?;\n"
 vector_type_pattern = r"Vector\.<(?P<type>\w+)>"
 
-attr_assign_pattern_of_name = r"\s*this\.%s = (?:\w*)\.read(?P<type>\w*)\(\);\n"
+attr_assign_pattern_of_name = ".*public var %s:(?P<type>.*) =.*\n"
+neutral_assign_pattern_of_name = ".*public var %s:(?P<type>.*);\n"
+
 vector_attr_write_pattern_of_name = (
     r"\s*(?:\w*)\.write(?P<type>\w*)\(this\.%s\[(?:\w+)\]\);\n"
 )
@@ -24,7 +26,7 @@ vector_const_len_pattern_of_name_and_type = (
     r"\s*this\.%s = new Vector\.<%s>\((?P<size>\d+),true\);\n"
 )
 dynamic_type_pattern_of_type = (
-    r"\s*(?:this\.)?\w+ = ProtocolTypeManager\.getInstance\(%s,\w*\);\n"
+    ".*public var %s:Vector.*\n"
 )
 optional_var_pattern_of_name = r"\s*if\(this\.%s == null\)\n"
 hash_function_pattern = r"\s*HASH_FUNCTION\(data\);\n"
@@ -56,23 +58,41 @@ def parseVar(name, typename, lines):
         return parseVectorVar(name, m.group("type"), lines)
 
     attr_assign_pattern = attr_assign_pattern_of_name % name
-    dynamic_type_pattern = dynamic_type_pattern_of_type % typename
+    dynamic_type_pattern = dynamic_type_pattern_of_type % name
     optional_var_pattern = optional_var_pattern_of_name % name
+    neutral_assign_pattern = neutral_assign_pattern_of_name % name
 
     optional = False
-
+    import json
+    #print("starting analysis", name, typename, json.dumps(attr_assign_pattern), json.dumps(dynamic_type_pattern))
+    type_caught = False
     for line in lines:
+        #print(json.dumps(line))
+        m = re.fullmatch(optional_var_pattern, line)
+        if m:
+            optional = True
+        if type_caught:
+            continue
         m = re.fullmatch(attr_assign_pattern, line)
         if m:
             type = m.group("type")
+            type_caught=True
+        if type_caught:
+            continue
 
         m = re.fullmatch(dynamic_type_pattern, line)
         if m:
             type = False
-
-        m = re.fullmatch(optional_var_pattern, line)
+            type_caught=True
+        
+        if type_caught:
+            continue
+        m = re.fullmatch(neutral_assign_pattern, line)
         if m:
-            optional = True
+            type = False
+            type_caught=True
+
+
 
     return dict(name=name, length=None, type=type, optional=optional)
 
@@ -178,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--labot-path", type=Path, default=root_path / "labot")
     # TODO: add filter for name
     args = parser.parse_args()
-
+    print("root_path", root_path, args.sources_path, args.labot_path)
     types = {}
     msg_from_id = {}
     types_from_id = {}
